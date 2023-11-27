@@ -10,19 +10,19 @@ select choice in "${choices[@]}"; do
 			printf "\nDirectory Bruteforcing"
 			printf "\n\nEnter the url for Directory Bruteforcing: "
 			read input1
-			ffuf -mc all -c -H "X-Forwarded-For: 127.0.0.1" -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0" -u "$input1/FUZZ" -w wordlist/dicc.txt -D -e js,php,bak,txt,asp,aspx,jsp,html,zip,jar,sql,json,old,gz,shtml,log,swp,yaml,yml,config,save,rsa,ppk -ac -o result_dir.tmp
-			input2=`echo $input1 | cut -f3 -d "/"`;
-			cat result_dir.tmp | ../exes/jq-win64.exe  '[.results[]|{status: .status, length: .length, url: .url}]' | grep -oP "status\":\s(\d{3})|length\":\s(\d{1,7})|url\":\s\"(http[s]?:\/\/.*?)\"" | paste -d' ' - - - | awk '{print $2" "$4" "$6}' | sed 's/\"//g' > result_${input2}_dir.txt
-			printf "\nDone. Result is stored in result_${input2}_dir.txt\n"
+			ffuf -mc 200,500 -c  -H "X-Forwarded-For: 127.0.0.1" -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0" -u "$input1/FUZZ" -w wordlist/dicc.txt -D -e js,php,bak,txt,asp,aspx,jsp,html,zip,jar,sql,json,old,gz,shtml,log,swp,yaml,yml,config,save,rsa,ppk -ac -o result_dir.tmp
+			input2=`echo $input1 |  cut -f3 -d "/"`
+			echo $input2
+			cat result_dir.tmp | ../exes/jq.exe '[.results[]|{status: .status, length: .length, url: .url}]' | grep -oP "status\":\s(\d{3})|length\":\s(\d{1,7})|url\":\s\"(http[s]?:\/\/.*?)\"" | paste -d' ' - - - | awk '{print $2" "$4" "$6}' | sed 's/\"//g' > ${input2}_result_dir.txt
+			printf "\nDone. Result is stored in ${input2}_result_dir.txt\n"
 			break
 			;;
                 "Parameter Discovery")
                         printf "\nParameter Discovery"
                         printf "\n\nEnter URL to discover parameter for: "
                         read input1
-			input2=`echo $input1 | cut -f3 -d "/"`;
-                        ffuf -mc all -c -H "X-Forwarded-For: 127.0.0.1" -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0" -u "$input1?FUZZ=abcd" -w wordlist/param.txt -ac | tee result_${input2}_param.txt
-			printf "\nDone. Result is stored in result_${input2}_param.txt\n"
+                        ffuf -mc all -c -H "X-Forwarded-For: 127.0.0.1" -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0" -u "$input1?FUZZ=abcd" -w wordlist/param.txt -ac | tee result_param.txt
+			printf "\nDone. Result is stored in result_param.txt\n"
                         break
                         ;;
                 "VHOST Discovery")
@@ -41,16 +41,16 @@ select choice in "${choices[@]}"; do
                         domain=$(echo "$input1" | unfurl -u domain)
                         gau $domain > gau.tmp
                         ffuf -mc all -c -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0" -u FUZZ -w gau.tmp -o result_gau.tmp
-                        cat result_gau.tmp |  ../exes/jq-win64.exe '[.results[]|{status: .status, length: .length, url: .url}]' | grep -oP "status\":\s(\d{3})|length\":\s(\d{1,7})|url\":\s\"(http[s]?:\/\/.*?)\"" | paste -d' ' - - - | awk '{print $2" "$4" "$6}' | sed 's/\"//g' > result_${input1}_wayback.txt
+                        cat result_gau.tmp | ../exes/jq.exe '[.results[]|{status: .status, length: .length, url: .url}]' | grep -oP "status\":\s(\d{3})|length\":\s(\d{1,7})|url\":\s\"(http[s]?:\/\/.*?)\"" | paste -d' ' - - - | awk '{print $2" "$4" "$6}' | sed 's/\"//g' > result_wayback.txt
                         rm *.tmp
-			printf "\nDone. Result is stored in result_${input1}_wayback.txt\n"
+			printf "\nDone. Result is stored in result_wayback.txt\n"
                         break
                         ;;
                 "Beast Mode")
                         echo "Beast Mode ON"
                         mkdir ffuf
-                        xargs -P `nproc` -I {} sh -c 'url="{}"; ffuf -mc all -H "X-Forwarded-For: 127.0.0.1" -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0" -u "{}/FUZZ" -w wordlist/dicc.txt -t 50 -D -e js,php,bak,txt,asp,aspx,jsp,html,zip,jar,sql,json,old,gz,shtml,log,swp,yaml,yml,config,save,rsa,ppk -ac -se -o ffuf/${url##*/}-${url%%:*}.json' < alive.txt
-                        cat ffuf/* | ../exes/jq-win64.exe '[.results[]|{status: .status, length: .length, url: .url}]' | grep -oP "status\":\s(\d{3})|length\":\s(\d{1,7})|url\":\s\"(http[s]?:\/\/.*?)\"" | paste -d' ' - - - | awk '{print $2" "$4" "$6}' | sed 's/\"//g' > result_beast.txt
+                        xargs -P10 -I {} sh -c 'url="{}"; ffuf -s -mc all -c -H "X-Forwarded-For: 127.0.0.1" -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0" -u "{}/FUZZ" -w wordlist/dicc.txt -t 50 -D -e js,php,bak,txt,asp,aspx,jsp,html,zip,jar,sql,json,old,gz,shtml,log,swp,yaml,yml,config,save,rsa,ppk -ac -se -o ffuf/${url##*/}-${url%%:*}.json' < alive.txt
+                        cat ffuf/* | ../exes/jq,exe '[.results[]|{status: .status, length: .length, url: .url}]' | grep -oP "status\":\s(\d{3})|length\":\s(\d{1,7})|url\":\s\"(http[s]?:\/\/.*?)\"" | paste -d' ' - - - | awk '{print $2" "$4" "$6}' | sed 's/\"//g' > result_beast.txt
                         rm ffuf -r
 			printf "\nDone. Result is stored in result_beast.txt\n"
                         break
